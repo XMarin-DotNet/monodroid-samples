@@ -1,24 +1,43 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 using Android.App;
 using Android.Content;
 using Android.OS;
-using Android.Runtime;
-using Android.Util;
 using Android.Views;
 using Android.Widget;
 
 namespace FragmentSample
 {
     public class TitleFragment : ListFragment
-    { 
+    {
+        int selectedIndex = 0;
+        bool showingTwoFragments = false;
+
         public override void OnActivityCreated(Bundle savedInstanceState)
         {
             base.OnActivityCreated(savedInstanceState);
             ListAdapter = new ArrayAdapter<String>(Activity, Android.Resource.Layout.SimpleListItemChecked, Shakespeare.Titles);
+
+            var twoFragmentsLayout = Activity.FindViewById(Resource.Id.two_fragments_layout);
+            showingTwoFragments = twoFragmentsLayout != null &&
+                                  twoFragmentsLayout.Visibility == ViewStates.Visible;
+
+            if (savedInstanceState != null)
+            {
+                selectedIndex = savedInstanceState.GetInt("current_play_id", 0);
+            }
+
+            if (showingTwoFragments)
+            {
+                ListView.ChoiceMode = ChoiceMode.Single;
+                ShowDetails(selectedIndex);
+            }
+        }
+
+        public override void OnSaveInstanceState(Bundle outState)
+        {
+            base.OnSaveInstanceState(outState);
+            outState.PutInt("current_play_id", selectedIndex);
         }
 
         public override void OnListItemClick(ListView l, View v, int position, long id)
@@ -28,9 +47,28 @@ namespace FragmentSample
 
         void ShowDetails(int playId)
         {
-            var intent = new Intent(Activity, typeof(PlayQuoteActivity));
-            intent.PutExtra("current_play_id", playId);
-            StartActivity(intent);
+            if (showingTwoFragments)
+            {
+                ListView.SetItemChecked(selectedIndex, true);
+
+                PlayQuoteFragment playQuoteFragment = (PlayQuoteFragment)FragmentManager.FindFragmentById(Resource.Id.playquote_container);
+
+                if (playQuoteFragment == null || playQuoteFragment.PlayId != playId)
+                {
+                    var quoteFrag = PlayQuoteFragment.NewInstance(selectedIndex);
+                    var ft = FragmentManager.BeginTransaction();
+                    ft.Replace(Resource.Id.playquote_container, quoteFrag);
+
+                    ft.SetTransition(FragmentTransit.FragmentFade);
+                    ft.Commit();
+                }
+            }
+            else
+            {
+                var intent = new Intent(Activity, typeof(PlayQuoteActivity));
+                intent.PutExtra("current_play_id", playId);
+                StartActivity(intent);
+            }
         }
     }
 }

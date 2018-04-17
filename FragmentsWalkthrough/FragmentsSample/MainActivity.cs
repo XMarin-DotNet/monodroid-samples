@@ -11,5 +11,6 @@ namespace FragmentSample
             base.OnCreate(savedInstanceState);
             SetContentView(Resource.Layout.activity_main);
         }
+
     }
 }
