@@ -1,6 +1,4 @@
-﻿using System;
-
-using Android.App;
+﻿using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Views;
@@ -10,17 +8,17 @@ namespace FragmentSample
 {
     public class TitleFragment : ListFragment
     {
-        int selectedIndex = 0;
-        bool showingTwoFragments = false;
+        int selectedIndex;
+        bool showingTwoFragments;
 
         public override void OnActivityCreated(Bundle savedInstanceState)
         {
             base.OnActivityCreated(savedInstanceState);
-            ListAdapter = new ArrayAdapter<String>(Activity, Android.Resource.Layout.SimpleListItemChecked, Shakespeare.Titles);
+            ListAdapter = new ArrayAdapter<string>(Activity, Android.Resource.Layout.SimpleListItemActivated1, Shakespeare.Titles);
 
-            var twoFragmentsLayout = Activity.FindViewById(Resource.Id.two_fragments_layout);
-            showingTwoFragments = twoFragmentsLayout != null &&
-                                  twoFragmentsLayout.Visibility == ViewStates.Visible;
+            var quoteContainer = Activity.FindViewById(Resource.Id.playquote_container);
+            showingTwoFragments = quoteContainer != null &&
+                                  quoteContainer.Visibility == ViewStates.Visible;
 
             if (savedInstanceState != null)
             {
@@ -51,7 +49,7 @@ namespace FragmentSample
             {
                 ListView.SetItemChecked(selectedIndex, true);
 
-                PlayQuoteFragment playQuoteFragment = (PlayQuoteFragment)FragmentManager.FindFragmentById(Resource.Id.playquote_container);
+                var playQuoteFragment = (PlayQuoteFragment) FragmentManager.FindFragmentById(Resource.Id.playquote_container);
 
                 if (playQuoteFragment == null || playQuoteFragment.PlayId != playId)
                 {
