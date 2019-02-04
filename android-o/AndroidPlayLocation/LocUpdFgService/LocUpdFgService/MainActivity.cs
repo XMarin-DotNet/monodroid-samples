@@ -10,7 +10,6 @@ using Android;
 using Android.Util;
 using Android.Support.Design.Widget;
 using Android.Net;
-using Android.Support.Compat;
 using Android.Locations;
 using Android.Support.V7.App;
 
@@ -226,7 +225,7 @@ namespace LocUpdFgService
 								// Build intent that displays the App settings screen.
 								Intent intent = new Intent();
 								intent.SetAction(Android.Provider.Settings.ActionApplicationDetailsSettings);
-								var uri = Uri.FromParts("package", BuildConfig.ApplicationId, null);
+								var uri = Uri.FromParts("package", PackageName, null);
 								intent.SetData(uri);
 								intent.SetFlags(ActivityFlags.NewTask);
 								StartActivity(intent);

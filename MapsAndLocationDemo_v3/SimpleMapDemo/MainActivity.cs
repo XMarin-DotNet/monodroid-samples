@@ -1,101 +1,144 @@
-﻿namespace SimpleMapDemo
+﻿using System;
+using System.Collections.Generic;
+
+using Android.App;
+using Android.Content;
+using Android.Gms.Common;
+using Android.OS;
+using Android.Support.V7.App;
+using Android.Util;
+using Android.Widget;
+
+using Uri = Android.Net.Uri;
+
+namespace SimpleMapDemo
 {
-    using System.Collections.Generic;
+    using AndroidUri = Uri;
 
-    using Android.App;
-    using Android.Content;
-    using Android.Gms.Common;
-    using Android.OS;
-    using Android.Util;
-    using Android.Views;
-    using Android.Widget;
-
-    using AndroidUri = Android.Net.Uri;
-
-    [Activity(Label = "@string/app_name", MainLauncher = true, Icon = "@drawable/icon")]
-    public class MainActivity : ListActivity
+    [Activity(Label = "@string/app_name", MainLauncher = true, Icon = "@drawable/icon", Theme = "@style/AppTheme")]
+    public class MainActivity : AppCompatActivity
     {
-        public static readonly int InstallGooglePlayServicesId = 1000;
-        public static readonly string Tag = "XamarinMapDemo";
+        public static readonly int RC_INSTALL_GOOGLE_PLAY_SERVICES = 1000;
+        public static readonly string TAG = "XamarinMapDemo";
 
-        private List<SampleActivity> _activities;
-        private bool _isGooglePlayServicesInstalled;
+        // This is a list of the examples that will be display in the Main Activity.
+        static readonly List<SampleActivityMetaData> SampleMetaDataList = new List<SampleActivityMetaData>
+                                                                          {
+                                                                              new SampleActivityMetaData(Resource.String.mapsAppText,
+                                                                                                         Resource.String.mapsAppTextDescription,
+                                                                                                         null),
+                                                                              new SampleActivityMetaData(Resource.String.activity_label_axml,
+                                                                                                         Resource.String.activity_description_axml,
+                                                                                                         typeof(BasicDemoActivity)),
+                                                                              new
+                                                                                  SampleActivityMetaData(Resource.String.activity_label_mapwithmarkers,
+                                                                                                         Resource
+                                                                                                             .String
+                                                                                                             .activity_description_mapwithmarkers,
+                                                                                                         typeof(MapWithMarkersActivity)),
+                                                                              new
+                                                                                  SampleActivityMetaData(Resource.String.activity_label_mapwithoverlays,
+                                                                                                         Resource
+                                                                                                             .String
+                                                                                                             .activity_description_mapwithoverlays,
+                                                                                                         typeof(MapWithOverlaysActivity)),
+                                                                              new SampleActivityMetaData(Resource.String.activity_label_mylocation,
+                                                                                                         Resource
+                                                                                                             .String.activity_description_mylocation,
+                                                                                                         typeof(MyLocationActivity))
+                                                                          };
 
-        protected override void OnActivityResult(int requestCode, Result resultCode, Intent data)
+        bool isGooglePlayServicesInstalled;
+        SamplesListAdapter listAdapter;
+        ListView listView;
+
+        protected override void OnCreate(Bundle savedInstanceState)
         {
-            switch (resultCode)
-            {
-                case Result.Ok:
-                    // Try again.
-                    _isGooglePlayServicesInstalled = true;
-                    break;
+            base.OnCreate(savedInstanceState);
+            SetContentView(Resource.Layout.MainActivity);
+            isGooglePlayServicesInstalled = TestIfGooglePlayServicesIsInstalled();
 
-                default:
-                    Log.Debug("MainActivity", "Unknown resultCode {0} for request {1}", resultCode, requestCode);
-                    break;
-            }
-        }
-
-        protected override void OnCreate(Bundle bundle)
-        {
-            base.OnCreate(bundle);
-            _isGooglePlayServicesInstalled = TestIfGooglePlayServicesIsInstalled();
             InitializeListView();
         }
 
-        protected override void OnListItemClick(ListView l, View v, int position, long id)
+
+        protected override void OnActivityResult(int requestCode, Result resultCode, Intent data)
         {
+            if (RC_INSTALL_GOOGLE_PLAY_SERVICES == requestCode && resultCode == Result.Ok)
+            {
+                isGooglePlayServicesInstalled = true;
+            }
+            else
+            {
+                Log.Warn(TAG, $"Don't know how to handle resultCode {resultCode} for request {requestCode}.");
+            }
+        }
+
+
+        protected override void OnResume()
+        {
+            base.OnResume();
+            listView.ItemClick += SampleSelected;
+        }
+
+        void SampleSelected(object sender, AdapterView.ItemClickEventArgs e)
+        {
+            var position = e.Position;
             if (position == 0)
             {
-                AndroidUri geoUri = AndroidUri.Parse("geo:42.374260,-71.120824");
-                Intent mapIntent = new Intent(Intent.ActionView, geoUri);
+                var geoUri = AndroidUri.Parse("geo:42.374260,-71.120824");
+                var mapIntent = new Intent(Intent.ActionView, geoUri);
                 StartActivity(mapIntent);
                 return;
             }
 
-            SampleActivity activity = _activities[position];
-            activity.Start(this);
+
+            var sampleToStart = SampleMetaDataList[position];
+            sampleToStart.Start(this);
         }
 
-        private void InitializeListView()
+        protected override void OnPause()
         {
-            if (_isGooglePlayServicesInstalled)
-            {
-                _activities = new List<SampleActivity>
-                                  {
-                                      new SampleActivity(Resource.String.mapsAppText, Resource.String.mapsAppTextDescription, null),
-                                      new SampleActivity(Resource.String.activity_label_axml, Resource.String.activity_description_axml, typeof(BasicDemoActivity)),
-                                      new SampleActivity(Resource.String.activity_label_mapwithmarkers, Resource.String.activity_description_mapwithmarkers, typeof(MapWithMarkersActivity)),
-                                      new SampleActivity(Resource.String.activity_label_mapwithoverlays, Resource.String.activity_description_mapwithoverlays, typeof(MapWithOverlaysActivity))
-                                  };
+            listView.ItemClick -= SampleSelected;
+            base.OnPause();
+        }
 
-                ListAdapter = new SimpleMapDemoActivityAdapter(this, _activities);
+
+        void InitializeListView()
+        {
+            listView = FindViewById<ListView>(Resource.Id.listView);
+            if (isGooglePlayServicesInstalled)
+            {
+                listAdapter = new SamplesListAdapter(this, SampleMetaDataList);
             }
             else
             {
-                Log.Error("MainActivity", "Google Play Services is not installed");
-                ListAdapter = new SimpleMapDemoActivityAdapter(this, null);
+                Log.Error(TAG, "Google Play Services is not installed");
+                listAdapter = new SamplesListAdapter(this, null);
             }
+
+            listView.Adapter = listAdapter;
         }
 
-        private bool TestIfGooglePlayServicesIsInstalled()
+        bool TestIfGooglePlayServicesIsInstalled()
         {
-			int queryResult = GoogleApiAvailability.Instance.IsGooglePlayServicesAvailable (this);
+            var queryResult = GoogleApiAvailability.Instance.IsGooglePlayServicesAvailable(this);
             if (queryResult == ConnectionResult.Success)
             {
-                Log.Info(Tag, "Google Play Services is installed on this device.");
+                Log.Info(TAG, "Google Play Services is installed on this device.");
                 return true;
             }
 
-			if (GoogleApiAvailability.Instance.IsUserResolvableError (queryResult))
+            if (GoogleApiAvailability.Instance.IsUserResolvableError(queryResult))
             {
-				string errorString = GoogleApiAvailability.Instance.GetErrorString(queryResult);
-                Log.Error(Tag, "There is a problem with Google Play Services on this device: {0} - {1}", queryResult, errorString);
-				Dialog errorDialog = GoogleApiAvailability.Instance.GetErrorDialog (this, queryResult, InstallGooglePlayServicesId);
-                ErrorDialogFragment dialogFrag = new ErrorDialogFragment(errorDialog);
+                var errorString = GoogleApiAvailability.Instance.GetErrorString(queryResult);
+                Log.Error(TAG, "There is a problem with Google Play Services on this device: {0} - {1}", queryResult, errorString);
+                var errorDialog = GoogleApiAvailability.Instance.GetErrorDialog(this, queryResult, RC_INSTALL_GOOGLE_PLAY_SERVICES);
+                var dialogFrag = new ErrorDialogFragment(errorDialog);
 
                 dialogFrag.Show(FragmentManager, "GooglePlayServicesDialog");
             }
+
             return false;
         }
     }
